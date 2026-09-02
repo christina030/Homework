@@ -34,7 +34,7 @@ print(f"medmnist version: {medmnist.__version__}")
 train_dataset, val_dataset, test_dataset, n_channels, n_classes, class_names = get_data(config["database"]["data_flag"])
 train_loader, val_loader, test_loader = get_loaders(train_dataset, val_dataset, test_dataset)
 
-plot_data(class_names, n_classes)
+plot_data(train_dataset, val_dataset, test_dataset, class_names, n_classes)
 
 """"""
 _teacher_probe = TeacherNet(num_classes=n_classes, in_channels=n_channels)
@@ -58,14 +58,16 @@ assert _student_probe(_x).shape == (2, n_classes)
 del _teacher_probe, _student_probe, _x
 
 """"""
-teacher_search_space = [(lr, wd) for lr in config["train"]["lr_condidates"] for wd in config["train"]["wd_condidates"]]
+teacher_search_space = [(lr, wd) for lr in config["train"]["lr_candidates"] for wd in config["train"]["wd_candidates"]]
 teacher_search_results = []
 
+print(type(config["train"]["lr_candidates"][0]))
 print("=== Teacher 超參數搜尋（validation accuracy）===")
 for lr, wd in teacher_search_space:
     _, _, best_val_acc = fit(
         model_fn=lambda: TeacherNet(num_classes=n_classes, in_channels=n_channels),
-        lr=lr, wd=wd, epochs=12, device=device, patience=4, verbose=False, seed=SEED
+        tr_loader=train_loader, va_loader=val_loader, lr=lr, wd=wd, epochs=12,
+        device=device, n_classes=n_classes, patience=4, verbose=False, seed=SEED
     )
     teacher_search_results.append({'lr': lr, 'wd': wd, 'val_acc': best_val_acc})
     print(f"lr={lr:<8} wd={wd:<8} -> best val_acc={best_val_acc:.4f}")
@@ -79,21 +81,23 @@ print("\n選定 Teacher 超參數:", best_teacher_cfg)
 print("=== 開始訓練 Teacher（early stopping 依 val accuracy）===")
 teacher_model, teacher_history, teacher_val_acc = fit(
     model_fn=lambda: TeacherNet(num_classes=n_classes, in_channels=n_channels),
+    tr_loader=train_loader, va_loader=val_loader,
     lr=best_teacher_cfg['lr'], wd=best_teacher_cfg['wd'],
-    epochs=40, device=device, patience=8, verbose=True, seed=SEED
+    epochs=40, device=device, n_classes=n_classes, patience=8, verbose=True, seed=SEED
 )
 print(f"\nTeacher 最終 val_acc = {teacher_val_acc:.4f}")
 plot_history(teacher_history, "Teacher")
 
-student_search_space = [(lr, wd) for lr in config["train"]["lr_condidates"] for wd in config["train"]["wd_condidates"]]
+""""""
+student_search_space = [(lr, wd) for lr in config["train"]["lr_candidates"] for wd in config["train"]["wd_candidates"]]
 student_search_results = []
 
-""""""
 print("=== Student Baseline 超參數搜尋（validation accuracy）===")
 for lr, wd in student_search_space:
     _, _, best_val_acc = fit(
         model_fn=lambda: StudentNet(num_classes=n_classes, in_channels=n_channels),
-        lr=lr, wd=wd, epochs=12, device=device, patience=4, verbose=False, seed=SEED
+        tr_loader=train_loader, va_loader=val_loader,
+        lr=lr, wd=wd, epochs=12, device=device, n_classes=n_classes, patience=4, verbose=False, seed=SEED
     )
     student_search_results.append({'lr': lr, 'wd': wd, 'val_acc': best_val_acc})
     print(f"lr={lr:<8} wd={wd:<8} -> best val_acc={best_val_acc:.4f}")
@@ -107,16 +111,17 @@ print("\n選定 Student Baseline 超參數:", best_student_cfg)
 print("=== 開始訓練 Student Baseline（無蒸餾）===")
 student_baseline_model, student_baseline_history, student_baseline_val_acc = fit(
     model_fn=lambda: StudentNet(num_classes=n_classes, in_channels=n_channels),
+    tr_loader=train_loader, va_loader=val_loader,
     lr=best_student_cfg['lr'], wd=best_student_cfg['wd'],
-    epochs=40, device=device, patience=8, verbose=True, seed=SEED
+    epochs=40, device=device, n_classes=n_classes, patience=8, verbose=True, seed=SEED
 )
 print(f"\nStudent Baseline 最終 val_acc = {student_baseline_val_acc:.4f}")
 plot_history(student_baseline_history, "Student Baseline (no KD)")
 
-kd_search_space = [(T, alpha) for T in config["train"]["T_condidates"] for alpha in config["train"]["alpha_condidates"]]
+""""""
+kd_search_space = [(T, alpha) for T in config["train"]["T_candidates"] for alpha in config["train"]["alpha_candidates"]]
 kd_search_results = []
 
-""""""
 print("=== KD 超參數搜尋 (T, alpha)（lr/wd 沿用 Student baseline 最佳設定）===")
 for T, alpha in kd_search_space:
     _, _, best_val_acc = fit_kd(
@@ -156,15 +161,28 @@ selection_summary = pd.DataFrame([
 print(selection_summary)
 
 """"""
-criterion = nn.CrossEntropyLoss()
-
-# 每個模型搭配它應該使用的 test loader（CNN 系列用 28x28，BiomedCLIP 插值版用 224x224 clip_test_loader，
-# BiomedCLIP 原生版用 224x224 clip_test_loader_native224）
 final_models = {
     'Teacher': (teacher_model, test_loader),
     'Student (Baseline, no KD)': (student_baseline_model, test_loader),
     'Student (KD)': (student_kd_model, test_loader),
 }
+
+model_save_dir = "saved_models"
+os.makedirs(model_save_dir, exist_ok=True)
+
+print(f"Saving all trained models to '{model_save_dir}'...")
+
+for name, (model, _) in final_models.items():
+    # Replace special characters for filename safety
+    safe_name = name.replace(' ', '_').replace('(', '').replace(')', '').replace('+', '_plus_').replace(',', '_').replace('/', '_').replace('-', '_').replace('.', '_')
+    model_path = os.path.join(model_save_dir, f"{safe_name}.pt")
+    torch.save(model.state_dict(), model_path)
+    print(f"Saved {name} to {model_path}")
+
+print("All models saved successfully!")
+
+""""""
+criterion = nn.CrossEntropyLoss()
 
 test_predictions = {}
 rows = []
