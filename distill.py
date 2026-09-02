@@ -11,6 +11,8 @@ from model import StudentNet
 from train_valid import evaluate, unpack_batch
 
 
+SEED = 42
+
 def distillation_loss(student_logits, teacher_logits, labels, T, alpha):
     hard_loss = F.cross_entropy(student_logits, labels)
     soft_teacher = F.log_softmax(teacher_logits / T, dim=1)
