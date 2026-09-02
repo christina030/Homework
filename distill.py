@@ -41,9 +41,8 @@ def train_kd_epoch(student, teacher, loader, optimizer, device, T, alpha):
     return total_loss / total, correct / total
 
 
-def fit_kd(teacher, lr, wd, T, alpha, epochs, n_classes, n_channels, device, patience=5, verbose=False, seed=SEED):
+def fit_kd(teacher, tr_loader, va_loader, lr, wd, T, alpha, epochs, n_classes, n_channels, device, patience=5, verbose=False, seed=SEED):
     set_seed(seed)
-    tr_loader, va_loader, _ = get_loaders(seed=seed)
     student = StudentNet(num_classes=n_classes, in_channels=n_channels).to(device)
     teacher = teacher.to(device)
     optimizer = torch.optim.Adam(student.parameters(), lr=lr, weight_decay=wd)
