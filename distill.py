@@ -10,7 +10,6 @@ from seed import set_seed
 from model import StudentNet
 from train_valid import evaluate, unpack_batch
 
-
 SEED = 42
 
 def distillation_loss(student_logits, teacher_logits, labels, T, alpha):
@@ -56,7 +55,7 @@ def fit_kd(teacher, lr, wd, T, alpha, epochs, n_classes, n_channels, device, pat
 
     for epoch in range(epochs):
         tr_loss, tr_acc = train_kd_epoch(student, teacher, tr_loader, optimizer, device, T, alpha)
-        val_loss, val_acc, val_auc, _, _ = evaluate(student, va_loader, device, criterion)
+        val_loss, val_acc, val_auc, _, _ = evaluate(student, va_loader, n_classes=n_classes, device=device, criterion=criterion)
         scheduler.step()
 
         history['train_loss'].append(tr_loss); history['train_acc'].append(tr_acc)
