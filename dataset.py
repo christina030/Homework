@@ -56,7 +56,7 @@ def get_loaders(train_dataset, val_dataset, test_dataset, batch_size_train=128, 
     return train_loader, val_loader, test_loader
 
 
-def plot_data(train_dataset, class_names, n_classes):
+def plot_data(train_dataset, val_dataset, test_dataset, class_names, n_classes):
     fig, axes = plt.subplots(1, 2, figsize=(14, 4))
     
     # 類別分布（train / val / test）
