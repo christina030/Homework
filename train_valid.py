@@ -11,8 +11,9 @@ import torch.nn.functional as F
 from sklearn.metrics import roc_auc_score
 
 from dataset import get_loaders
-from train_valid import evaluate
 from seed import set_seed
+
+SEED = 42
 
 def unpack_batch(batch):
     imgs, labels = batch
