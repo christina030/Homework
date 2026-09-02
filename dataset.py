@@ -10,6 +10,8 @@ import torchvision.transforms as transforms
 
 from seed import set_seed
 
+SEED = 42
+
 def get_data(data_flag):
     info = INFO[data_flag]
     n_channels = info['n_channels']       # 3 (RGB)
