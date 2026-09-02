@@ -125,7 +125,7 @@ kd_search_results = []
 print("=== KD 超參數搜尋 (T, alpha)（lr/wd 沿用 Student baseline 最佳設定）===")
 for T, alpha in kd_search_space:
     _, _, best_val_acc = fit_kd(
-        teacher=teacher_model,
+        teacher=teacher_model, tr_loader=train_loader, va_loader=val_loader,
         lr=best_student_cfg['lr'], wd=best_student_cfg['wd'],
         T=T, alpha=alpha, epochs=12, n_classes=n_classes, n_channels=n_channels, device=device, patience=4, verbose=False, seed=SEED
     )
@@ -140,7 +140,7 @@ print("\n選定 KD 超參數:", best_kd_cfg)
 
 print("=== 開始訓練 KD Student ===")
 student_kd_model, student_kd_history, student_kd_val_acc = fit_kd(
-    teacher=teacher_model,
+    teacher=teacher_model, tr_loader=train_loader, va_loader=val_loader,
     lr=best_student_cfg['lr'], wd=best_student_cfg['wd'],
     T=best_kd_cfg['T'], alpha=best_kd_cfg['alpha'],
     epochs=40, n_classes=n_classes, n_channels=n_channels, device=device, patience=8, verbose=True, seed=SEED
