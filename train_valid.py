@@ -70,12 +70,11 @@ def evaluate(model, loader, n_classes, device, criterion=None):
     return avg_loss, acc, auc, all_probs, all_labels
 
 
-def fit(model_fn, lr, wd, epochs, device, patience=5, verbose=False, seed=SEED):
+def fit(model_fn, tr_loader, va_loader, lr, wd, epochs, device, n_classes, patience=5, verbose=False, seed=SEED):
     """標準（無蒸餾）訓練迴圈，內含 early stopping，模型選擇依據 validation accuracy。
     model_fn: 一個回傳全新模型實例的函式（確保每次呼叫從相同初始化開始）。
     """
     set_seed(seed)
-    tr_loader, va_loader, _ = get_loaders(seed=seed)
     model = model_fn().to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=wd)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
@@ -86,7 +85,7 @@ def fit(model_fn, lr, wd, epochs, device, patience=5, verbose=False, seed=SEED):
 
     for epoch in range(epochs):
         tr_loss, tr_acc = train_one_epoch(model, tr_loader, optimizer, device)
-        val_loss, val_acc, val_auc, _, _ = evaluate(model, va_loader, device, criterion)
+        val_loss, val_acc, val_auc, _, _ = evaluate(model, va_loader, n_classes, device, criterion)
         scheduler.step()
 
         history['train_loss'].append(tr_loss); history['train_acc'].append(tr_acc)
