@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -237,8 +238,7 @@ print("類別對照表:", {i: name for i, name in enumerate(class_names)})
 
 """"""
 # 逐類別表現比較
-for name in ['Student (Baseline, no KD)', 'Student (KD)',
-             'Student (KD from VLM Teacher, upsampled 224)', 'Student (KD from VLM Teacher, native 224)']:
+for name in ['Student (Baseline, no KD)', 'Student (KD)']:
     probs, labels = test_predictions[name]
     preds = probs.argmax(1)
     print(f"\n=== {name} — Classification Report (Test Set) ===")
