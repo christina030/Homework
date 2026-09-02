@@ -4,6 +4,8 @@ import numpy as np
 
 import torch
 
+SEED = 42
+
 def set_seed(seed=SEED):
     random.seed(seed)
     np.random.seed(seed)
